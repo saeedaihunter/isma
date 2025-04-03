@@ -50,8 +50,8 @@ if st.button("Submit to API"):
                     response = call_api(text_list)
                     
                     # Display the response
-                    st.subheader("API Response:")
-                    st.json(response)
+                    st.dataframe(response)
+                    
                 except Exception as e:
                     st.error(f"Error calling API: {str(e)}")
         else:
