@@ -3,6 +3,30 @@ import requests
 import json
 
 
+def call_api(text_list):
+    """Call the API with the list of texts"""
+    url = "https://test2-996798979251.us-central1.run.app"
+    
+    # Prepare the payload
+    payload = {
+        "uom_list": text_list
+    }
+    
+    # Set the headers
+    headers = {
+        "Content-Type": "application/json"
+    }
+    
+    # Make the API call
+    response = requests.post(url, headers=headers, json=payload)
+    
+    # Raise an exception for bad status codes
+    response.raise_for_status()
+    
+    # Return the JSON response
+    return response.json()
+
+
 st.title("Text List API Processor")
 st.write("Enter texts below (one per line) and submit to process via API")
 
@@ -34,26 +58,3 @@ if st.button("Submit to API"):
             st.warning("Please enter at least one text item")
     else:
         st.warning("Please enter text before submitting")
-
-def call_api(text_list):
-    """Call the API with the list of texts"""
-    url = "https://test2-996798979251.us-central1.run.app"
-    
-    # Prepare the payload
-    payload = {
-        "uom_list": text_list
-    }
-    
-    # Set the headers
-    headers = {
-        "Content-Type": "application/json"
-    }
-    
-    # Make the API call
-    response = requests.post(url, headers=headers, json=payload)
-    
-    # Raise an exception for bad status codes
-    response.raise_for_status()
-    
-    # Return the JSON response
-    return response.json()
