@@ -27,8 +27,8 @@ def call_api(text_list):
     return response.json()
 
 
-st.title("Text List API Processor")
-st.write("Enter texts below (one per line) and submit to process via API")
+st.title("ISMA talent association test")
+st.write("Enter Units Of Meanings below (one per line) and submit to process")
 
 # Create a text area for user input
 text_input = st.text_area(
