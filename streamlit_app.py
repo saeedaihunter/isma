@@ -28,7 +28,7 @@ def call_api(text_list):
 
 
 st.title("ISMA talent association test")
-st.write("Enter Units Of Meanings below (one per line) and submit to process")
+st.write("Enter Units of Meanings below (one per line) and submit to process")
 
 # Create a text area for user input
 text_input = st.text_area(
