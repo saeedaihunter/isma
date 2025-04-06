@@ -5,7 +5,7 @@ import json
 
 def call_api(text_list):
     """Call the API with the list of texts"""
-    url = "https://test2-996798979251.us-central1.run.app"
+    url = "https://ismatalent-854321931145.europe-west1.run.app"
     
     # Prepare the payload
     payload = {
@@ -28,7 +28,7 @@ def call_api(text_list):
 
 
 st.title("ISMA talent association test")
-st.write("Enter Units of Meanings below (one per line) and submit to process")
+st.write("Enter Units of Meanings below (one per line) and click on submit to process")
 
 # Create a text area for user input
 text_input = st.text_area(
