@@ -1,3 +1,36 @@
+st.subheader("Extract Units of Meaning from letters")
+
+# Input for full-text description
+gpt_input = st.text_area(
+    "Enter a description of a person or behavior:",
+    placeholder="Layla is a highly motivated strategist and a great team leader..."
+)
+
+# Call GPT extraction API
+if st.button("Extract with GPT"):
+    if gpt_input:
+        with st.spinner("Extracting..."):
+            try:
+                # Replace this URL with your ngrok/public FastAPI endpoint
+                gpt_api_url = "https://269d-34-106-179-214.ngrok-free.app/extract"
+
+                gpt_payload = {
+                    "text": gpt_input
+                }
+
+                gpt_response = requests.post(gpt_api_url, json=gpt_payload)
+                gpt_response.raise_for_status()
+
+                data = gpt_response.json()
+                extracted = data.get("units_of_meaning", "No units found.")
+                st.success("Units of meaning extracted:")
+                st.text(extracted)
+
+            except Exception as e:
+                st.error(f"Error calling GPT extraction API: {str(e)}")
+    else:
+        st.warning("Please enter a description to extract from.")
+st.markdown("---")
 import streamlit as st
 import requests
 import json
@@ -59,37 +92,4 @@ if st.button("Submit to API"):
     else:
         st.warning("Please enter text before submitting")
 
-st.markdown("---")
-st.subheader("Extract Units of Meaning with GPT")
-
-# Input for full-text description
-gpt_input = st.text_area(
-    "Enter a description of a person or behavior:",
-    placeholder="Layla is a highly motivated strategist and a great team leader..."
-)
-
-# Call GPT extraction API
-if st.button("Extract with GPT"):
-    if gpt_input:
-        with st.spinner("Extracting..."):
-            try:
-                # Replace this URL with your ngrok/public FastAPI endpoint
-                gpt_api_url = "https://269d-34-106-179-214.ngrok-free.app/extract"
-
-                gpt_payload = {
-                    "text": gpt_input
-                }
-
-                gpt_response = requests.post(gpt_api_url, json=gpt_payload)
-                gpt_response.raise_for_status()
-
-                data = gpt_response.json()
-                extracted = data.get("units_of_meaning", "No units found.")
-                st.success("Units of meaning extracted:")
-                st.text(extracted)
-
-            except Exception as e:
-                st.error(f"Error calling GPT extraction API: {str(e)}")
-    else:
-        st.warning("Please enter a description to extract from.")
 
