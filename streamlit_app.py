@@ -74,7 +74,7 @@ if st.button("Extract with GPT"):
         with st.spinner("Extracting..."):
             try:
                 # Replace this URL with your ngrok/public FastAPI endpoint
-                gpt_api_url = "https://ed86-34-125-230-117.ngrok-free.app/extract"
+                gpt_api_url = "https://b200-34-106-179-214.ngrok-free.app/"
 
                 gpt_payload = {
                     "text": gpt_input
