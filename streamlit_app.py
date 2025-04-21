@@ -9,7 +9,7 @@ def call_api(text_list):
     
     # Prepare the payload
     payload = {
-        "uom_list": text_list
+        "string": text_list
     }
     
     # Set the headers
