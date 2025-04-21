@@ -1,3 +1,8 @@
+import streamlit as st
+import requests
+import json
+
+
 st.subheader("Extract Units of Meaning from letters")
 
 # Input for full-text description
@@ -31,9 +36,6 @@ if st.button("Extract with GPT"):
     else:
         st.warning("Please enter a description to extract from.")
 st.markdown("---")
-import streamlit as st
-import requests
-import json
 
 
 def call_api(text_list):
