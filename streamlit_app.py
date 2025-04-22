@@ -20,7 +20,7 @@ if st.button("Extract UOMs and Analyze"):
     if gpt_input:
         with st.spinner("Extracting Units of Meaning with GPT..."):
             try:
-                gpt_api_url = "https://isma-extract-uom-854321931145.europe-west1.run.app"
+                gpt_api_url = "https://find-active-verbs-854321931145.europe-west1.run.app"
                 gpt_payload = {"text": gpt_input}
                 gpt_response = requests.post(gpt_api_url, json=gpt_payload)
                 gpt_response.raise_for_status()
