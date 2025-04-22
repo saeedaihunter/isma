@@ -17,13 +17,13 @@ if st.button("Extract UOMs and Analyze"):
     if gpt_input:
         with st.spinner("Extracting Units of Meaning with GPT..."):
             try:
-                # Step 1: Call GPT Extraction API
-                gpt_api_url = "https://037b-34-70-50-221.ngrok-free.app/extract"  # ✅ replace if needed
+                # ✅ Step 1: Call GPT Extraction API via Cloud Run
+                gpt_api_url = "https://isma-extract-uom-854321931145.europe-west1.run.app"  # Replace with your real Cloud Run endpoint
                 gpt_payload = {"text": gpt_input}
                 gpt_response = requests.post(gpt_api_url, json=gpt_payload)
                 gpt_response.raise_for_status()
 
-                # Get extracted text
+                # Process extracted UOMs
                 gpt_data = gpt_response.json()
                 extracted_raw = gpt_data.get("units_of_meaning", "")
                 extracted_list = [
@@ -37,7 +37,7 @@ if st.button("Extract UOMs and Analyze"):
                     st.write(extracted_list)
 
                     with st.spinner("Analyzing UOMs via ISMA API..."):
-                        # Step 2: Call ISMA API with extracted UOMs
+                        # ✅ Step 2: Call ISMA API with extracted UOMs
                         isma_url = "https://ismatalent-854321931145.europe-west1.run.app"
                         isma_payload = {"uom_list": extracted_list}
                         isma_response = requests.post(isma_url, json=isma_payload)
