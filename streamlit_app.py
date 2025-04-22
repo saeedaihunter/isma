@@ -18,7 +18,7 @@ if st.button("Extract UOMs and Analyze"):
         with st.spinner("Extracting Units of Meaning with GPT..."):
             try:
                 # Step 1: Call GPT Extraction API
-                gpt_api_url = "https://269d-34-106-179-214.ngrok-free.app/extract"  # ✅ replace if needed
+                gpt_api_url = "https://037b-34-70-50-221.ngrok-free.app/extract"  # ✅ replace if needed
                 gpt_payload = {"text": gpt_input}
                 gpt_response = requests.post(gpt_api_url, json=gpt_payload)
                 gpt_response.raise_for_status()
