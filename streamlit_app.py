@@ -136,3 +136,46 @@ if st.button("Get Action Verbs"):
                     st.info("No action verbs were returned.")
             except Exception as e:
                 st.error(f"⚠️ Error calling Active Verbs API: {str(e)}")
+# ----------------------------------------
+# PART 4: GENERATE SOCIAL CONTRIBUTION TEXT
+# ----------------------------------------
+st.markdown("---")
+st.subheader("Generate Unique Social Contribution Description")
+
+st.markdown("Provide a list of talents (UOMs) and active verbs. The AI will generate a description of the person’s social contribution.")
+
+# Auto-fill UOMs and Verbs from previous steps if available
+uoms_default = ", ".join(uoms_for_verbs) if uoms_for_verbs else ""
+verbs_default = ""
+
+# If you already have the results from Part 3 (action verbs), extract them here
+if 'results' in locals():
+    extracted_verbs = []
+    for r in results:
+        extracted_verbs.extend([v.strip() for v in r['active_verbs'].split(",")])
+    verbs_default = ", ".join(sorted(set(extracted_verbs)))
+
+talents_input = st.text_area("Talents (UOMs, comma-separated):", value=uoms_default, height=100)
+verbs_input = st.text_area("Action Verbs (comma-separated):", value=verbs_default, height=100)
+
+if st.button("Generate Contribution Text"):
+    talents_list = [t.strip() for t in talents_input.split(",") if t.strip()]
+    verbs_list = [v.strip() for v in verbs_input.split(",") if v.strip()]
+
+    if not talents_list or not verbs_list:
+        st.warning("Please provide both talents and action verbs.")
+    else:
+        with st.spinner("Generating social contribution text..."):
+            try:
+                contribution_api_url = "https://unique-social-contribution-writer-854321931145.europe-west1.run.app"  # 🔁 Replace this with your real URL
+                payload = {"uoms": talents_list, "verbs": verbs_list}
+                response = requests.post(contribution_api_url, json=payload)
+                response.raise_for_status()
+
+                data = response.json()
+                description = data.get("description", "No description returned.")
+                st.success("🌟 Unique Social Contribution Description:")
+                st.write(description)
+
+            except Exception as e:
+                st.error(f"⚠️ Error calling Social Contribution API: {str(e)}")
