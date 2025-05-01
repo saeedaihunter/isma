@@ -1,4 +1,4 @@
-# isma_talent_analyzer.py  – 4-step wizard
+# isma_talent_analyzer.py  – 4-step wizard, verbs table persists
 import requests, pandas as pd, streamlit as st
 
 # ───────── helpers ───────────────────────────────────────────────────────────
@@ -13,7 +13,7 @@ def call_api(url, payload, err_msg):
         st.error(f"{err_msg}: {e}")
         st.stop()
 
-# ───────── endpoints (private) ───────────────────────────────────────────────
+# ───────── endpoints ─────────────────────────────────────────────────────────
 API = st.secrets.get("isma_api", {
     "extract": "https://isma-extract-uom-854321931145.europe-west1.run.app",
     "analyze": "https://ismatalent-854321931145.europe-west1.run.app",
@@ -46,8 +46,9 @@ if step == 1:
             with st.spinner("Extracting UoMs…"):
                 data = call_api(API["extract"], {"text": letter}, "Cannot extract UoMs")
             st.session_state["uoms"] = [
-                u.strip() for u in data.get("units_of_meaning", "")
-                .replace("\n", ",").split(",") if u.strip()
+                u.strip()
+                for u in data.get("units_of_meaning", "").replace("\n", ",").split(",")
+                if u.strip()
             ]
             st.session_state["step"] = 2
             rerun()
@@ -56,17 +57,18 @@ if step == 1:
 if step == 2:
     st.subheader("2️⃣  Association Table of Super-Talents")
 
-    # show extracted list for user context
     st.markdown("**Extracted UoMs:** " + ", ".join(st.session_state["uoms"]))
 
     if st.button("🔎 Analyze associations"):
         with st.spinner("Calling association service…"):
-            res = call_api(API["analyze"],
-                           {"uom_list": st.session_state["uoms"]},
-                           "Cannot analyze UoMs")
+            res = call_api(
+                API["analyze"],
+                {"uom_list": st.session_state["uoms"]},
+                "Cannot analyze UoMs",
+            )
         st.session_state["analysis"] = res
-        st.success("Association table received")
-        st.dataframe(res, use_container_width=True)
+    if "analysis" in st.session_state:
+        st.dataframe(st.session_state["analysis"], use_container_width=True)
 
     col1, col2 = st.columns(2)
     if col1.button("⬅ Back"):
@@ -93,51 +95,69 @@ if step == 3:
         with st.spinner("Fetching verbs…"):
             out = call_api(API["verbs"], {"uoms": uoms}, "Cannot fetch verbs")
 
-        rows = [
-            {"Use": True, "Talent": itm["uom"], "Verb": v.strip()}
-            for itm in out.get("results", [])
-            for v in itm["active_verbs"].split(",") if v.strip()
-        ]
-        st.session_state["verbs_df"] = pd.DataFrame(rows)
-        st.success("Select the verbs you want to keep:")
-        verbs_editor = st.data_editor(st.session_state["verbs_df"], use_container_width=True)
-        st.session_state["verbs_kept"] = verbs_editor[verbs_editor["Use"]]["Verb"].astype(str).tolist()
+        st.session_state["verbs_df"] = pd.DataFrame(
+            {
+                "Use": True,
+                "Talent": [itm["uom"] for itm in out["results"] for _ in itm["active_verbs"].split(",") if _.strip()],
+                "Verb": [v.strip() for itm in out["results"] for v in itm["active_verbs"].split(",") if v.strip()],
+            }
+        )
 
-    if st.session_state.get("verbs_kept"):
-        if st.button("➡ Proceed to social contribution"):
-            st.session_state["final_uoms"] = [ln.strip() for ln in txt.splitlines() if ln.strip()]
-            st.session_state["step"] = 4
-            rerun()
+    # ---------- always show editor if verbs_df exists ----------
+    if "verbs_df" in st.session_state:
+        st.success("✔️  Tick the verbs you want to keep, then continue:")
+        edited = st.data_editor(
+            st.session_state["verbs_df"],
+            key="verbs_editor",
+            use_container_width=True,
+        )
+        # save edits & current selection
+        st.session_state["verbs_df"] = edited
+        st.session_state["verbs_kept"] = (
+            edited[edited["Use"]]["Verb"].astype(str).tolist()
+        )
 
-    if st.button("⬅ Back"):
+    # navigation buttons
+    nav1, nav2 = st.columns(2)
+    if nav1.button("⬅ Back"):
         st.session_state["step"] = 2
+        rerun()
+    if nav2.button("➡ Proceed to social contribution") and st.session_state.get(
+        "verbs_kept"
+    ):
+        st.session_state["final_uoms"] = [
+            ln.strip() for ln in txt.splitlines() if ln.strip()
+        ]
+        st.session_state["step"] = 4
         rerun()
 
 # ───────── STEP 4 : Generate Unique Social Contribution ─────────────────────
 if step == 4:
     st.subheader("4️⃣  Craft Unique Social Contribution (Over-Capacity)")
 
-    # user may tweak ordering or wording one last time
     uom_text = ", ".join(st.session_state["final_uoms"])
     verb_text = ", ".join(st.session_state["verbs_kept"])
 
-    uom_input  = st.text_input("Talents (comma-separated)", value=uom_text)
+    uom_input = st.text_input("Talents (comma-separated)", value=uom_text)
     verb_input = st.text_input("Action verbs (comma-separated)", value=verb_text)
 
-    if st.button("🌟 Generate contribution"):
+    gen, back = st.columns(2)
+    if gen.button("🌟 Generate contribution"):
         talents = [t.strip() for t in uom_input.split(",") if t.strip()]
-        verbs   = [v.strip() for v in verb_input.split(",") if v.strip()]
+        verbs = [v.strip() for v in verb_input.split(",") if v.strip()]
         if not talents or not verbs:
             st.warning("Need at least one talent and one verb.")
             st.stop()
 
         with st.spinner("Composing sentence…"):
-            res = call_api(API["social"],
-                           {"uoms": talents, "verbs": verbs},
-                           "Cannot generate contribution")
+            res = call_api(
+                API["social"],
+                {"uoms": talents, "verbs": verbs},
+                "Cannot generate contribution",
+            )
         st.success("🎉 Unique Social Contribution")
         st.write(res.get("description", "No description returned."))
 
-    if st.button("⬅ Back"):
+    if back.button("⬅ Back"):
         st.session_state["step"] = 3
         rerun()
