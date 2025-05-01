@@ -1,99 +1,201 @@
-import streamlit as st
+# isma_talent_analyzer.py
+import json
+import textwrap
 import requests
+import pandas as pd
+import streamlit as st
 
+# ──────────────────────────────────────────────────────────────────────────────
+# CONFIG ─ change endpoints in .streamlit/secrets.toml or override here
+# ──────────────────────────────────────────────────────────────────────────────
+DEFAULT_ENDPOINTS = {
+    "extract": "https://isma-extract-uom-854321931145.europe-west1.run.app",
+    "analyze": "https://ismatalent-854321931145.europe-west1.run.app",
+    "verbs":   "https://find-active-verbs-854321931145.europe-west1.run.app",
+    "social":  "https://unique-social-contribution-writer-854321931145.europe-west1.run.app",
+}
+ENDPOINTS = st.secrets.get("isma_api", DEFAULT_ENDPOINTS)
+
+# ──────────────────────────────────────────────────────────────────────────────
+# PAGE SET-UP
+# ──────────────────────────────────────────────────────────────────────────────
 st.set_page_config(page_title="ISMA Talent Analyzer", layout="wide")
 st.title("✨ ISMA Talent Analyzer")
-st.write("This tool helps you extract Units of Meaning (UOMs), analyze them, find matching action verbs, and generate a unique social contribution.")
 
-# Initialize session state variables
-st.session_state.setdefault('extracted_list', [])
-st.session_state.setdefault('manual_uom_list', [])
-st.session_state.setdefault('analysis_results', [])
-st.session_state.setdefault('verb_results', [])
+st.sidebar.header("⚙️ Settings")
+for k in DEFAULT_ENDPOINTS:
+    ENDPOINTS[k] = st.sidebar.text_input(f"{k.capitalize()} endpoint", ENDPOINTS[k])
 
-# --------- PART 1: EXTRACT FROM DESCRIPTION ---------
-st.header("1. Extract Talents from a Description")
-with st.expander("▶ Step 1: Enter Description", expanded=True):
-    gpt_input = st.text_area("Describe a person or behavior:", placeholder="Layla is a highly motivated strategist and a great team leader...")
-    if st.button("Extract UOMs"):
-        if gpt_input:
-            with st.spinner("Extracting Units of Meaning with GPT..."):
-                try:
-                    response = requests.post("https://isma-extract-uom-854321931145.europe-west1.run.app", json={"text": gpt_input})
-                    response.raise_for_status()
-                    uoms = response.json().get("units_of_meaning", "")
-                    st.session_state.extracted_list = [u.strip() for u in uoms.replace("\n", ",").split(",") if u.strip()]
-                    st.success("✅ Extracted UOMs:")
-                    st.write(st.session_state.extracted_list)
-                except Exception as e:
-                    st.error(f"⚠️ Error: {e}")
-        else:
-            st.warning("Please enter a description first.")
+# keep wizard state
+step = st.session_state.get("step", 1)
 
-# --------- PART 2: ANALYZE UOMS ---------
-st.header("2. Analyze Extracted or Manual Talents")
-with st.expander("▶ Step 2: Review/Edit Talents and Analyze", expanded=True):
-    combined_uoms = st.session_state.extracted_list + st.session_state.manual_uom_list
-    default_uom_text = "\n".join(combined_uoms)
-    manual_input = st.text_area("Edit or add talents (one per line):", value=default_uom_text, height=200)
+# handy helper
+def call_api(url: str, payload: dict, err_msg: str):
+    try:
+        r = requests.post(url, json=payload, timeout=40)
+        r.raise_for_status()
+        return r.json()
+    except Exception as exc:
+        st.error(f"{err_msg}: {exc}")
+        st.stop()
 
-    if st.button("Analyze Talents"):
-        uom_list = [line.strip() for line in manual_input.split("\n") if line.strip()]
-        st.session_state.manual_uom_list = uom_list
-        with st.spinner("Analyzing talents..."):
-            try:
-                response = requests.post("https://ismatalent-854321931145.europe-west1.run.app", json={"uom_list": uom_list})
-                response.raise_for_status()
-                st.session_state.analysis_results = response.json()
-                st.success("✅ Analysis Results:")
-                st.dataframe(st.session_state.analysis_results)
-            except Exception as e:
-                st.error(f"⚠️ Error calling ISMA API: {e}")
+# ──────────────────────────────────────────────────────────────────────────────
+# STEP 1 – EXTRACT UOMs
+# ──────────────────────────────────────────────────────────────────────────────
+if step == 1:
+    st.subheader("1️⃣  Describe the person or behaviour")
 
-# --------- PART 3: FIND ACTION VERBS ---------
-st.header("3. Discover Action Verbs for Talents")
-with st.expander("▶ Step 3: Get Action Verbs", expanded=True):
-    all_uoms = st.session_state.manual_uom_list
-    uom_input = "\n".join(all_uoms)
-    verb_input_area = st.text_area("Talents for verb extraction (one per line):", value=uom_input, height=150)
+    SAMPLE = textwrap.dedent("""
+        Quentin est un explorateur d'idées permanent. Il relie l'improbable et entraîne son équipe …
+    """).strip()
 
-    if st.button("Find Action Verbs"):
-        uoms = [u.strip() for u in verb_input_area.split("\n") if u.strip()]
-        if uoms:
-            with st.spinner("Finding action verbs..."):
-                try:
-                    response = requests.post("https://find-active-verbs-854321931145.europe-west1.run.app", json={"uoms": uoms})
-                    response.raise_for_status()
-                    st.session_state.verb_results = response.json().get("results", [])
-                    st.success("✅ Found Action Verbs:")
-                    st.dataframe(st.session_state.verb_results)
-                except Exception as e:
-                    st.error(f"⚠️ Error: {e}")
-        else:
-            st.warning("Enter at least one UOM.")
+    if st.button("Load sample"):
+        st.session_state["description"] = SAMPLE
 
-# --------- PART 4: SOCIAL CONTRIBUTION ---------
-st.header("4. Generate Unique Social Contribution")
-with st.expander("▶ Step 4: Generate Description", expanded=True):
-    talents = ", ".join(st.session_state.manual_uom_list)
-    verbs = ", ".join({v.strip() for r in st.session_state.verb_results for v in r.get('active_verbs', '').split(',') if v.strip()})
+    with st.form("extract_form", clear_on_submit=False):
+        description = st.text_area(
+            "Paste or type a description", 
+            value=st.session_state.get("description", ""), 
+            height=180, placeholder="Layla is a highly motivated strategist…"
+        )
+        submitted = st.form_submit_button("🚀 Extract talents")
 
-    talents_input = st.text_area("Talents (comma-separated):", value=talents)
-    verbs_input = st.text_area("Action Verbs (comma-separated):", value=verbs)
+    if submitted and description.strip():
+        with st.spinner("Calling GPT to extract talents…"):
+            data = call_api(
+                ENDPOINTS["extract"],
+                {"text": description},
+                "Cannot extract talents"
+            )
+        uoms = [u.strip() for u in data.get("units_of_meaning", "").replace("\n", ",").split(",") if u.strip()]
+        st.session_state["uoms"] = uoms or []
+        st.session_state["step"] = 2
+        st.experimental_rerun()
 
-    if st.button("Generate Contribution Text"):
-        talents_list = [t.strip() for t in talents_input.split(",") if t.strip()]
-        verbs_list = [v.strip() for v in verbs_input.split(",") if v.strip()]
+# ──────────────────────────────────────────────────────────────────────────────
+# STEP 2 – REVIEW & ANALYZE UOMs
+# ──────────────────────────────────────────────────────────────────────────────
+if step == 2:
+    st.subheader("2️⃣  Review / prioritise talents")
+    st.info("Drag rows to reorder – top = highest priority")
 
-        if not talents_list or not verbs_list:
-            st.warning("Please provide both talents and verbs.")
-        else:
-            with st.spinner("Generating contribution text..."):
-                try:
-                    response = requests.post("https://unique-social-contribution-writer-854321931145.europe-west1.run.app", json={"uoms": talents_list, "verbs": verbs_list})
-                    response.raise_for_status()
-                    description = response.json().get("description", "No description returned.")
-                    st.success("🌟 Unique Social Contribution:")
-                    st.write(description)
-                except Exception as e:
-                    st.error(f"⚠️ Error: {e}")
+    # initial DataFrame
+    df_uom = pd.DataFrame({"Talent": st.session_state.get("uoms", [])})
+    edited_df = st.data_editor(df_uom, num_rows="dynamic", use_container_width=True, reorderable=True)
+
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("⬅ Back"):
+            st.session_state["step"] = 1
+            st.experimental_rerun()
+
+    with col2:
+        if st.button("🔎 Analyze talents"):
+            uom_list = edited_df["Talent"].dropna().astype(str).tolist()
+            st.session_state["uoms"] = uom_list
+            with st.spinner("Analyzing talents…"):
+                analysis = call_api(
+                    ENDPOINTS["analyze"],
+                    {"uom_list": uom_list},
+                    "Cannot analyze talents"
+                )
+            st.session_state["analysis"] = analysis
+            st.success(f"Analyzed {len(uom_list)} talents")
+            st.dataframe(analysis, use_container_width=True)
+            st.session_state["step"] = 3
+
+    st.stop()
+
+# ──────────────────────────────────────────────────────────────────────────────
+# STEP 3 – FIND ACTION VERBS
+# ──────────────────────────────────────────────────────────────────────────────
+if step == 3:
+    st.subheader("3️⃣  Get inspiring action verbs")
+
+    with st.form("verb_form"):
+        st.write("Select the talents for which you want verbs:")
+        selected_uoms = st.multiselect(
+            "Talents", st.session_state.get("uoms", []), 
+            default=st.session_state.get("uoms", [])
+        )
+        verb_sub = st.form_submit_button("⚡ Find verbs")
+
+    if verb_sub and selected_uoms:
+        with st.spinner("Fetching verbs…"):
+            verb_json = call_api(
+                ENDPOINTS["verbs"],
+                {"uoms": selected_uoms},
+                "Cannot find verbs"
+            )
+
+        # flatten into a DataFrame with a choose checkbox
+        rows = []
+        for item in verb_json.get("results", []):
+            talent = item["uom"]
+            verbs = [v.strip() for v in item["active_verbs"].split(",") if v.strip()]
+            rows.extend({"Use": True, "Talent": talent, "Verb": v} for v in verbs)
+
+        df_verbs = pd.DataFrame(rows)
+        edited_verbs = st.data_editor(df_verbs, use_container_width=True)
+
+        # store only checked verbs
+        chosen = edited_verbs[edited_verbs["Use"]]["Verb"].unique().tolist()
+        st.session_state["verbs"] = chosen
+
+        if st.button("➡ Next: craft contribution"):
+            st.session_state["step"] = 4
+            st.experimental_rerun()
+
+    st.stop()
+
+# ──────────────────────────────────────────────────────────────────────────────
+# STEP 4 – GENERATE UNIQUE SOCIAL CONTRIBUTION
+# ──────────────────────────────────────────────────────────────────────────────
+if step == 4:
+    st.subheader("4️⃣  Generate unique social contribution")
+
+    st.write("Reorder talents if needed (importance top-down) and uncheck verbs you don’t like.")
+
+    # talents reorder
+    df_tal = pd.DataFrame({"Talent": st.session_state["uoms"]})
+    df_tal = st.data_editor(df_tal, reorderable=True, use_container_width=True, num_rows="dynamic")
+
+    # verbs selector
+    df_ver = pd.DataFrame({"Use": True, "Verb": st.session_state.get("verbs", [])})
+    df_ver = st.data_editor(df_ver, use_container_width=True)
+
+    if st.button("🌟 Generate contribution"):
+        final_talents = df_tal["Talent"].dropna().astype(str).tolist()
+        final_verbs   = df_ver[df_ver["Use"]]["Verb"].astype(str).tolist()
+
+        if not final_talents or not final_verbs:
+            st.warning("Need at least one talent and one verb.")
+            st.stop()
+
+        with st.spinner("Composing sentence…"):
+            result = call_api(
+                ENDPOINTS["social"],
+                {"uoms": final_talents, "verbs": final_verbs},
+                "Cannot generate contribution"
+            )
+
+        sentence = result.get("description", "No description returned.")
+        st.success("🎉 Your unique social contribution")
+        st.write(sentence)
+
+        # offer download
+        payload = {
+            "talents": final_talents,
+            "verbs": final_verbs,
+            "contribution": sentence,
+        }
+        st.download_button(
+            "💾 Download JSON",
+            data=json.dumps(payload, indent=2, ensure_ascii=False),
+            file_name="isma_profile.json",
+            mime="application/json",
+        )
+
+    if st.button("↩ Back"):
+        st.session_state["step"] = 3
+        st.experimental_rerun()
