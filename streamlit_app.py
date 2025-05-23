@@ -22,8 +22,8 @@ API = st.secrets.get("isma_api", {
 })
 
 # ───────── UI SET-UP ─────────────────────────────────────────────────────────
-st.set_page_config(page_title="ISMA Talent Analyzer", layout="wide")
-st.title("✨ ISMA Talent Analyzer")
+st.set_page_config(page_title="ISMA Talent Assistant", layout="wide")
+st.title("✨ ISMA Talent Assistant")
 
 step = st.session_state.get("step", 1)
 
@@ -55,12 +55,12 @@ if step == 1:
 
 # ───────── STEP 2 : Association Table (Super-Talents) ───────────────────────
 if step == 2:
-    st.subheader("2️⃣  Association Table of Super-Talents")
+    st.subheader("2️⃣  Association Table of UOMs")
 
     st.markdown("**Extracted UoMs:** " + ", ".join(st.session_state["uoms"]))
 
     if st.button("🔎 Analyze associations"):
-        with st.spinner("Calling association service…"):
+        with st.spinner("associating…"):
             res = call_api(
                 API["analyze"],
                 {"uom_list": st.session_state["uoms"]},
@@ -83,7 +83,7 @@ if step == 3:
     st.subheader("3️⃣  Find Inspiring Action Verbs")
 
     default_text = "\n".join(st.session_state["uoms"])
-    st.write("Edit the list below (one talent per line) or paste new ones:")
+    st.write("Edit the list below (one talent per line) or enter new ones:")
     txt = st.text_area("Talents for verb extraction", value=default_text, height=160)
 
     if st.button("⚡ Get verbs"):
@@ -133,7 +133,7 @@ if step == 3:
 
 # ───────── STEP 4 : Generate Unique Social Contribution ─────────────────────
 if step == 4:
-    st.subheader("4️⃣  Craft Unique Social Contribution (Over-Capacity)")
+    st.subheader("4️⃣  Craft Unique Social Contribution")
 
     uom_text = ", ".join(st.session_state["final_uoms"])
     verb_text = ", ".join(st.session_state["verbs_kept"])
